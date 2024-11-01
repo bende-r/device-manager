@@ -1,127 +1,177 @@
 from flask import Flask, jsonify, request, render_template
 import requests
+import threading
 import socket
 import json
+import logging
+from server import DiscoveryServer
 
-app = Flask(__name__)
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
-# Global list to store discovered devices
-devices = []
 
-# Discovery function to scan for devices
-def discover_devices():
-    global devices
-    devices = []  # Reset the list of devices on each discovery
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-    sock.settimeout(2)
-    
-    # Send discovery message
-    message = "DISCOVER_DEVICES"
-    sock.sendto(message.encode(), ("<broadcast>", 5002))
+class FlaskDiscoveryServer:
+    def __init__(self, flask_port=5001, discovery_port=5000):
+        self.app = Flask(__name__)
+        self.devices = []
+        self.discovery_server = DiscoveryServer(broadcast_port=discovery_port)
+        self.flask_port = flask_port
+        self.setup_routes()
 
-    try:
-        while True:
-            data, addr = sock.recvfrom(1024)
-            device_info = json.loads(data.decode())
-            device_info['ip'] = addr[0]  # Add the IP address of the device
-            devices.append(device_info)
-    except socket.timeout:
-        pass  # Discovery ends after the timeout
+    def setup_routes(self):
+        @self.app.before_request
+        def initial_discovery():
+            self.update_devices()
 
-# Trigger discovery on app startup
-@app.before_first_request
-def initial_discovery():
-    discover_devices()
+        @self.app.route('/')
+        def home():
+            return render_template('index.html')
 
-@app.route('/')
-def home():
-    return render_template('index.html')
+        @self.app.route('/discover', methods=['GET'])
+        def trigger_discovery():
+            self.update_devices()
+            return jsonify({"devices": self.devices})
 
-@app.route('/discover', methods=['GET'])
-def trigger_discovery():
-    discover_devices()
-    return jsonify({"devices": devices})
+        @self.app.route('/devices', methods=['GET'])
+        def get_devices():
+            all_devices_data = []
+            for device in self.devices:
+                logger.debug(f"Requesting data from device: {device}")
+                try:
+                    response = requests.get(f"http://{device['ip']}:{device['port']}/")
+                    response.raise_for_status()
+                    all_devices_data.append(response.json())
+                except requests.exceptions.RequestException as e:
+                    logger.error(f"Error requesting device data: {e}")
+                    return jsonify({"error": str(e)}), 500
+            return jsonify(all_devices_data), 200
 
-@app.route('/devices', methods=['GET'])
-def get_devices():
-    all_devices_data = []
-    for device in devices:
+        @self.app.route('/devices/<mac>', methods=['GET'])
+        def get_device(mac):
+            device = next((d for d in self.devices if d.get('mac') == mac), None)
+            if not device:
+                return jsonify({"error": "Device not found"}), 404
+
+            try:
+                response = requests.get(f"http://{device['ip']}:{device['port']}/devices/{mac}")
+                response.raise_for_status()
+                return jsonify(response.json()), 200
+            except requests.exceptions.RequestException as e:
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route('/scan', methods=['GET'])
+        def scan_devices():
+            scanned_devices = []
+            for device in self.devices:
+                try:
+                    response = requests.get(f"http://{device['ip']}:{device['port']}/scan")
+                    response.raise_for_status()
+                    scanned_devices.extend(response.json())
+                except requests.exceptions.RequestException as e:
+                    return jsonify({"error": str(e)}), 500
+            return jsonify(scanned_devices), 200
+
+        @self.app.route('/add_device', methods=['POST'])
+        def add_device():
+            mac = request.form.get("mac")
+            if not mac:
+                return jsonify({"error": "MAC address is required"}), 400
+
+            added_devices = []
+            for device in self.devices:
+                try:
+                    response = requests.post(
+                        f"http://{device['ip']}:{device['port']}/devices",
+                        params={"mac": mac}
+                    )
+                    response.raise_for_status()
+                    added_devices.append(response.json())
+                except requests.exceptions.RequestException as e:
+                    return jsonify({"error": str(e)}), 500
+            return jsonify(added_devices), 201
+
+        @self.app.route('/devices/<mac>/statistics', methods=['GET'])
+        def get_device_statistics(mac):
+            device = next((d for d in self.devices if d.get('mac') == mac), None)
+            if not device:
+                return jsonify({"error": "Device not found"}), 404
+
+            try:
+                response = requests.get(
+                    f"http://{device['ip']}:{device['port']}/devices/{mac}/statistics"
+                )
+                response.raise_for_status()
+                return jsonify(response.json()), 200
+            except requests.exceptions.RequestException as e:
+                return jsonify({"error": str(e)}), 500
+
+    def update_devices(self):
+        """Обновляет список устройств из сервера обнаружения"""
+        active_clients = self.discovery_server.get_active_clients()
+        current_ips = {device['ip'] for device in self.devices}
+
+        # Добавляем новые устройства
+        for client_ip in active_clients:
+            if client_ip not in current_ips:
+                self.devices.append({
+                    'ip': client_ip,
+                    'port': 5000,  # Предполагаемый порт клиента
+                    'mac': None  # MAC-адрес можно получить при первом подключении
+                })
+                logger.info(f"New device discovered: {client_ip}")
+
+        # Удаляем отключенные устройства
+        self.devices = [device for device in self.devices
+                        if device['ip'] in active_clients]
+
+    def start(self):
+        """Запускает сервер обнаружения и Flask-приложение"""
         try:
-            response = requests.get(f"http://{device['ip']}:{device['port']}/")
-            response.raise_for_status()
-            all_devices_data.append(response.json())
-        except requests.exceptions.RequestException as e:
-            return jsonify({"error": str(e)}), 500
-    return jsonify(all_devices_data), 200
+            # Запускаем сервер обнаружения
+            if not self.discovery_server.start():
+                logger.error("Failed to start discovery server")
+                return False
 
-@app.route('/devices/<mac>', methods=['GET'])
-def get_device(mac):
-    device = next((d for d in devices if d['mac'] == mac), None)
-    if not device:
-        return jsonify({"error": "Device not found"}), 404
-    
-    try:
-        response = requests.get(f"http://{device['ip']}:{device['port']}/devices/{mac}")
-        response.raise_for_status()
-        return jsonify(response.json()), 200
-    except requests.exceptions.RequestException as e:
-        return jsonify({"error": str(e)}), 500
+            # Запускаем периодическое обновление списка устройств
+            def update_loop():
+                while True:
+                    self.update_devices()
+                    threading.Event().wait(10)  # Обновляем каждые 10 секунд
 
-@app.route('/scan', methods=['GET'])
-def scan_devices():
-    scanned_devices = []
-    for device in devices:
+            update_thread = threading.Thread(target=update_loop)
+            update_thread.daemon = True
+            update_thread.start()
+
+            # Запускаем Flask-приложение
+            self.app.run(host="0.0.0.0", port=self.flask_port)
+            return True
+
+        except Exception as e:
+            logger.error(f"Error starting server: {e}")
+            return False
+
+    def stop(self):
+        """Останавливает сервер"""
         try:
-            response = requests.get(f"http://{device['ip']}:{device['port']}/scan")
-            response.raise_for_status()
-            scanned_devices.extend(response.json())  # Append results from each device
-        except requests.exceptions.RequestException as e:
-            return jsonify({"error": str(e)}), 500
-    return jsonify(scanned_devices), 200
+            self.discovery_server.stop()
+        except Exception as e:
+            logger.error(f"Error stopping server: {e}")
 
-@app.route('/add_device', methods=['POST'])
-def add_device():
-    mac = request.form.get("mac")
-    if not mac:
-        return jsonify({"error": "MAC address is required"}), 400
 
-    added_devices = []
-    for device in devices:
-        try:
-            response = requests.post(f"http://{device['ip']}:{device['port']}/devices", params={"mac": mac})
-            response.raise_for_status()
-            added_devices.append(response.json())
-        except requests.exceptions.RequestException as e:
-            return jsonify({"error": str(e)}), 500
-    return jsonify(added_devices), 201
-
-@app.route('/devices/<mac>/statistics', methods=['GET'])
-def get_device_statistics(mac):
-    device = next((d for d in devices if d['mac'] == mac), None)
-    if not device:
-        return jsonify({"error": "Device not found"}), 404
-    
+def main():
+    server = FlaskDiscoveryServer(flask_port=5001, discovery_port=5000)
     try:
-        response = requests.get(f"http://{device['ip']}:{device['port']}/devices/{mac}/statistics")
-        response.raise_for_status()
-        return jsonify(response.json()), 200
-    except requests.exceptions.RequestException as e:
-        return jsonify({"error": str(e)}), 500
+        server.start()
+    except KeyboardInterrupt:
+        logger.info("Shutting down server...")
+        server.stop()
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        server.stop()
+
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5001)
-
-
-
-
-
-
-
-
-
-
-
+    main()
 
 # from flask import Flask, jsonify, request, render_template
 # import requests
