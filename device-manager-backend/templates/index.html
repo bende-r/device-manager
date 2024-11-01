@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Device Manager</title>
+    <link rel="stylesheet" href="/static/css/style.css" />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  </head>
+
+  <body>
+    <h1>Device Manager</h1>
+    <div id="message"></div>
+
+    <h2>Discover Devices</h2>
+    <button id="discoverButton">Discover Devices</button>
+    <ul id="discoveredDevicesList"></ul>
+
+    <h2>Scan All Devices</h2>
+    <button id="scanButton">Scan All Devices</button>
+    <ul id="deviceList"></ul>
+
+    <h2>Add New Device</h2>
+    <form id="addDeviceForm">
+      <label for="mac">MAC Address:</label>
+      <input type="text" id="mac" name="mac" required />
+      <button type="submit">Add Device</button>
+    </form>
+
+    <h2>All Devices</h2>
+    <button id="getDevicesButton">Get All Devices</button>
+    <ul id="allDevicesList"></ul>
+
+    <h2>Device Statistics</h2>
+    <form id="getStatisticsForm">
+      <label for="macStats">MAC Address:</label>
+      <input type="text" id="macStats" name="macStats" required />
+      <button type="submit">Get Statistics</button>
+    </form>
+    <ul id="statisticsList"></ul>
+
+    <script>
+      $(document).ready(function () {
+        // Discover devices on the network
+        $("#discoverButton").click(function () {
+          $.get("/discover", function (data) {
+            $("#discoveredDevicesList").empty();
+            data.devices.forEach(function (device) {
+              $("#discoveredDevicesList").append(
+                `<li>MAC: ${device.mac}, IP: ${device.ip}, Type: ${device.type}</li>`
+              );
+            });
+          }).fail(function () {
+            $("#message").text("Error discovering devices.");
+          });
+        });
+
+        // Scan all discovered devices
+        $("#scanButton").click(function () {
+          $.get("/scan", function (data) {
+            $("#deviceList").empty();
+            data.forEach(function (device) {
+              $("#deviceList").append(
+                `<li>MAC: ${device.mac}, RSSI: ${device.RSSI}, Type: ${device.type}</li>`
+              );
+            });
+          }).fail(function () {
+            $("#message").text("Error scanning devices.");
+          });
+        });
+
+        // Add new device
+        $("#addDeviceForm").submit(function (e) {
+          e.preventDefault();
+          let mac = $("#mac").val();
+          $.post("/add_device", { mac: mac }, function (data) {
+            $("#message").text("Device added.");
+            $("#mac").val("");
+          }).fail(function () {
+            $("#message").text("Error adding device.");
+          });
+        });
+
+        // Get all devices
+        $("#getDevicesButton").click(function () {
+          $.get("/devices", function (data) {
+            $("#allDevicesList").empty();
+            data.forEach(function (device) {
+              $("#allDevicesList").append(
+                `<li>MAC: ${device.mac}, Temperature: ${device.avg_temperature}, Humidity: ${device.avg_humidity}, Battery: ${device.avg_battery}, Online: ${device.is_online}</li>`
+              );
+            });
+          }).fail(function () {
+            $("#message").text("Error retrieving devices.");
+          });
+        });
+
+        // Get device statistics by MAC address
+        $("#getStatisticsForm").submit(function (e) {
+          e.preventDefault();
+          let mac = $("#macStats").val();
+          $.get(`/devices/${mac}/statistics`, function (data) {
+            $("#statisticsList").empty();
+            data.forEach(function (stat) {
+              $("#statisticsList").append(
+                `<li>Timestamp: ${stat.timestamp}, Temperature: ${stat.temperature}, Humidity: ${stat.humidity}, Battery: ${stat.battery}</li>`
+              );
+            });
+          }).fail(function () {
+            $("#message").text("Error retrieving statistics.");
+          });
+        });
+      });
+    </script>
+  </body>
+</html>
