@@ -15,18 +15,21 @@ class DiscoveryClient:
         udp_thread.join()  # Keep the thread running indefinitely
 
     def _listen_for_discovery(self):
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            s.bind(('', self.discovery_port))
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s.bind(('', self.discovery_port))
 
+        try:
             while True:
                 data, addr = s.recvfrom(1024)
                 try:
-                    message = json.loads(data.decode())
+                    message = json.loads(data.decode('utf-8'))
                     if message["type"] == "discovery":
                         self._register_with_server(addr[0], message["tcp_port"])
                 except:
                     continue
+        finally:
+            s.close()
 
     def _register_with_server(self, server_ip, tcp_port):
         try:
