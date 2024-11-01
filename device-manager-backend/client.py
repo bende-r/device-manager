@@ -35,10 +35,9 @@ class DiscoveryClient:
                 s.send("register".encode())
                 response = s.recv(1024).decode()
                 if response == "OK":
-                    print(f"Successfully registered with server at {server_ip}")
+                    print("Successfully registered with server at {}".format(server_ip))
         except:
-            print(f"Failed to register with server at {server_ip}")
-
+            print("Failed to register with server at {}".format(server_ip))
 
 if __name__ == "__main__":
     client = DiscoveryClient()
