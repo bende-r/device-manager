@@ -35,7 +35,7 @@ class DiscoveryServer:
                     "tcp_port": self.tcp_port
                 }).encode()
                 s.sendto(message, ('<broadcast>', self.broadcast_port))
-                print(f"Sent discovery broadcast")
+                print("Sent discovery broadcast")
                 threading.Event().wait(5)
 
     def _run_tcp_server(self):
@@ -49,7 +49,7 @@ class DiscoveryServer:
                     data = conn.recv(1024).decode()
                     if data == "register":
                         self.clients[addr[0]] = datetime.now()
-                        print(f"Registered client: {addr[0]}")
+                        print("Registered client: {}".format(addr[0]))
                         conn.send("OK".encode())
 
     def get_active_clients(self):
