@@ -1,9 +1,7 @@
-# server.py
 import socket
-import threading
 import json
+import threading
 from datetime import datetime
-
 
 class DiscoveryServer:
     def __init__(self, broadcast_port=5000, tcp_port=5001):
@@ -20,22 +18,19 @@ class DiscoveryServer:
         tcp_thread.daemon = True
         tcp_thread.start()
 
-        # Keep the main thread alive indefinitely
         udp_thread.join()
         tcp_thread.join()
 
     def _run_udp_discovery(self):
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-            s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-            s.bind(('', 0))
-
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP) as s:
+            s.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 2)  # Установка TTL для multicast
             while True:
                 message = json.dumps({
                     "type": "discovery",
                     "tcp_port": self.tcp_port
                 }).encode()
-                s.sendto(message, ('<broadcast>', self.broadcast_port))
-                print("Sent discovery broadcast")
+                s.sendto(message, ('224.0.0.1', self.broadcast_port))  # Отправка на multicast-адрес
+                print("Sent discovery multicast")
                 threading.Event().wait(5)
 
     def _run_tcp_server(self):
@@ -54,7 +49,6 @@ class DiscoveryServer:
 
     def get_active_clients(self):
         return list(self.clients.keys())
-
 
 if __name__ == "__main__":
     server = DiscoveryServer()
