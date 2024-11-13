@@ -6,7 +6,7 @@ from datetime import datetime
 
 
 class DiscoveryServer:
-    def __init__(self, broadcast_port=5000, tcp_port=5001):
+    def __init__(self, broadcast_port=5050, tcp_port=5051):
         self.broadcast_port = broadcast_port
         self.tcp_port = tcp_port
         self.clients = {}

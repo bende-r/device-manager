@@ -5,7 +5,7 @@ import json
 
 
 class DiscoveryClient:
-    def __init__(self, discovery_port=5000):
+    def __init__(self, discovery_port=5050):
         self.discovery_port = discovery_port
 
     def start(self):
