@@ -46,7 +46,9 @@
             $("#discoveredDevicesList").empty();
             data.devices.forEach(function (device) {
               $("#discoveredDevicesList").append(
-                `<li>MAC: ${device.mac}, IP: ${device.ip}, Type: ${device.type}</li>`
+                `<li>MAC: ${device.mac || "N/A"}, IP: ${
+                  device.ip || "N/A"
+                }, Type: ${device.type || "N/A"}</li>`
               );
             });
           }).fail(function () {
@@ -60,7 +62,9 @@
             $("#deviceList").empty();
             data.forEach(function (device) {
               $("#deviceList").append(
-                `<li>MAC: ${device.mac}, RSSI: ${device.RSSI}, Type: ${device.type}</li>`
+                `<li>MAC: ${device.mac || "N/A"}, RSSI: ${
+                  device.RSSI || "N/A"
+                }, Type: ${device.type || "N/A"}</li>`
               );
             });
           }).fail(function () {
@@ -84,9 +88,16 @@
         $("#getDevicesButton").click(function () {
           $.get("/devices", function (data) {
             $("#allDevicesList").empty();
+            console.log("Devices data:", data); // Log data for debugging
             data.forEach(function (device) {
+              let mac = device.mac || "N/A";
+              let temperature = device.avg_temperature || "N/A";
+              let humidity = device.avg_humidity || "N/A";
+              let battery = device.avg_battery || "N/A";
+              let isOnline = device.is_online ? "Yes" : "No";
+
               $("#allDevicesList").append(
-                `<li>MAC: ${device.mac}, Temperature: ${device.avg_temperature}, Humidity: ${device.avg_humidity}, Battery: ${device.avg_battery}, Online: ${device.is_online}</li>`
+                `<li>MAC: ${mac}, Temperature: ${temperature}, Humidity: ${humidity}, Battery: ${battery}, Online: ${isOnline}</li>`
               );
             });
           }).fail(function () {
@@ -100,9 +111,14 @@
           let mac = $("#macStats").val();
           $.get(`/devices/${mac}/statistics`, function (data) {
             $("#statisticsList").empty();
+            console.log("Statistics data:", data); // Log data for debugging
             data.forEach(function (stat) {
               $("#statisticsList").append(
-                `<li>Timestamp: ${stat.timestamp}, Temperature: ${stat.temperature}, Humidity: ${stat.humidity}, Battery: ${stat.battery}</li>`
+                `<li>Timestamp: ${stat.timestamp || "N/A"}, Temperature: ${
+                  stat.temperature || "N/A"
+                }, Humidity: ${stat.humidity || "N/A"}, Battery: ${
+                  stat.battery || "N/A"
+                }</li>`
               );
             });
           }).fail(function () {

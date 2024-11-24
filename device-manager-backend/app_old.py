@@ -4,12 +4,11 @@ import threading
 import socket
 import json
 import logging
-import time
-import signal
 from server import DiscoveryServer
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
 
 class FlaskDiscoveryServer:
     def __init__(self, flask_port=5001, discovery_port=5000):
@@ -18,9 +17,12 @@ class FlaskDiscoveryServer:
         self.discovery_server = DiscoveryServer(broadcast_port=discovery_port)
         self.flask_port = flask_port
         self.setup_routes()
-        self.running = True
 
     def setup_routes(self):
+        @self.app.before_request
+        def initial_discovery():
+            self.update_devices()
+
         @self.app.route('/')
         def home():
             return render_template('index.html')
@@ -36,8 +38,7 @@ class FlaskDiscoveryServer:
             for device in self.devices:
                 logger.debug(f"Requesting data from device: {device}")
                 try:
-                    response = requests.get(f"http://{device['ip']}:5000/")
-                    print(response.json())
+                    response = requests.get(f"http://{device['ip']}:{device['port']}/")
                     response.raise_for_status()
                     all_devices_data.append(response.json())
                 except requests.exceptions.RequestException as e:
@@ -50,8 +51,9 @@ class FlaskDiscoveryServer:
             device = next((d for d in self.devices if d.get('mac') == mac), None)
             if not device:
                 return jsonify({"error": "Device not found"}), 404
+
             try:
-                response = requests.get(f"http://{device['ip']}:5000/devices/{mac}")
+                response = requests.get(f"http://{device['ip']}:{device['port']}/devices/{mac}")
                 response.raise_for_status()
                 return jsonify(response.json()), 200
             except requests.exceptions.RequestException as e:
@@ -62,7 +64,7 @@ class FlaskDiscoveryServer:
             scanned_devices = []
             for device in self.devices:
                 try:
-                    response = requests.get(f"http://{device['ip']}:5000/scan")
+                    response = requests.get(f"http://{device['ip']}:{device['port']}/scan")
                     response.raise_for_status()
                     scanned_devices.extend(response.json())
                 except requests.exceptions.RequestException as e:
@@ -74,11 +76,12 @@ class FlaskDiscoveryServer:
             mac = request.form.get("mac")
             if not mac:
                 return jsonify({"error": "MAC address is required"}), 400
+
             added_devices = []
             for device in self.devices:
                 try:
                     response = requests.post(
-                        f"http://{device['ip']}:5000/devices",
+                        f"http://{device['ip']}:{device['port']}/devices",
                         params={"mac": mac}
                     )
                     response.raise_for_status()
@@ -89,56 +92,58 @@ class FlaskDiscoveryServer:
 
         @self.app.route('/devices/<mac>/statistics', methods=['GET'])
         def get_device_statistics(mac):
-            print(  self.devices)
             device = next((d for d in self.devices if d.get('mac') == mac), None)
-            print (device)
             if not device:
                 return jsonify({"error": "Device not found"}), 404
+
             try:
                 response = requests.get(
-                    f"http://{device['ip']}:5000/devices/{mac}/statistics"
+                    f"http://{device['ip']}:{device['port']}/devices/{mac}/statistics"
                 )
                 response.raise_for_status()
                 return jsonify(response.json()), 200
             except requests.exceptions.RequestException as e:
                 return jsonify({"error": str(e)}), 500
 
-
     def update_devices(self):
+        """Обновляет список устройств из сервера обнаружения"""
         active_clients = self.discovery_server.get_active_clients()
         current_ips = {device['ip'] for device in self.devices}
 
+        # Добавляем новые устройства
         for client_ip in active_clients:
             if client_ip not in current_ips:
                 self.devices.append({
                     'ip': client_ip,
-                    'port': 5000,
-                    'mac' : None
+                    'port': 5000,  # Предполагаемый порт клиента
+                    'mac': None  # MAC-адрес можно получить при первом подключении
                 })
                 logger.info(f"New device discovered: {client_ip}")
 
-        self.devices = [device for device in self.devices if device['ip'] in active_clients]
-
-    def start_discovery_server(self):
-        discovery_thread = threading.Thread(target=self.discovery_server.start)
-        discovery_thread.daemon = True
-        discovery_thread.start()
-        logger.info("Discovery server started in a separate thread")
+        # Удаляем отключенные устройства
+        self.devices = [device for device in self.devices
+                        if device['ip'] in active_clients]
 
     def start(self):
+        """Запускает сервер обнаружения и Flask-приложение"""
         try:
-            self.start_discovery_server()
+            # Запускаем сервер обнаружения
+            if not self.discovery_server.start():
+                logger.error("Failed to start discovery server")
+                return False
 
+            # Запускаем периодическое обновление списка устройств
             def update_loop():
-                while self.running:
+                while True:
                     self.update_devices()
-                    time.sleep(10)
+                    threading.Event().wait(10)  # Обновляем каждые 10 секунд
 
             update_thread = threading.Thread(target=update_loop)
             update_thread.daemon = True
             update_thread.start()
 
-            self.app.run(host="127.0.0.1", port=self.flask_port)
+            # Запускаем Flask-приложение
+            self.app.run(host="0.0.0.0", port=self.flask_port)
             return True
 
         except Exception as e:
@@ -146,31 +151,24 @@ class FlaskDiscoveryServer:
             return False
 
     def stop(self):
-        logger.info("Stopping FlaskDiscoveryServer...")
-        self.running = False
+        """Останавливает сервер"""
         try:
             self.discovery_server.stop()
         except Exception as e:
-            logger.error(f"Error stopping discovery server: {e}")
+            logger.error(f"Error stopping server: {e}")
+
 
 def main():
     server = FlaskDiscoveryServer(flask_port=5001, discovery_port=5000)
-
-    def signal_handler(sig, frame):
-        logger.info("Received signal to stop. Shutting down server...")
-        server.stop()
-        exit(0)
-
-    signal.signal(signal.SIGINT, signal_handler)
-
     try:
         server.start()
     except KeyboardInterrupt:
-        logger.info("Shutting down server due to keyboard interrupt...")
+        logger.info("Shutting down server...")
         server.stop()
     except Exception as e:
         logger.error(f"Unexpected error: {e}")
         server.stop()
+
 
 if __name__ == "__main__":
     main()
