@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Управление устройствами</title>
+    <link rel="stylesheet" href="/static/css/style.css" />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f0f8ff;
+        color: #333;
+      }
+
+      h1 {
+        text-align: center;
+        color: #0066cc;
+        margin-top: 20px;
+      }
+
+      .button-row {
+        display: flex;
+        justify-content: center;
+        margin: 20px 0;
+      }
+
+      button {
+        padding: 10px 20px;
+        font-size: 16px;
+        border: none;
+        border-radius: 5px;
+        background-color: #0066cc;
+        color: #fff;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+
+      button:hover {
+        background-color: #004d99;
+      }
+
+      .scan-result h2 {
+        text-align: center;
+        color: #0066cc;
+        margin-bottom: 10px;
+      }
+
+      .device-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        justify-content: center;
+        margin: 20px 0;
+      }
+
+      .device-card {
+        width: 200px;
+        padding: 15px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        background-color: #ffffff;
+        text-align: center;
+        box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+      }
+
+      .device-card h3 {
+        margin: 10px 0;
+        font-size: 18px;
+        color: #333;
+      }
+
+      .device-card p {
+        margin: 5px 0;
+        font-size: 14px;
+      }
+
+      .scan-list {
+        list-style: none;
+        padding: 0;
+        margin: 20px auto;
+        width: 60%;
+        text-align: left;
+      }
+
+      .scan-list li {
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        background-color: #f4f4f4;
+        margin-bottom: 10px;
+        box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Управление устройствами</h1>
+
+    <!-- Карточки устройств -->
+    <div class="device-grid" id="deviceGrid"></div>
+
+    <div class="button-row">
+      <button id="scanButton">Поиск датчиков</button>
+    </div>
+
+    <!-- Результаты сканирования -->
+    <div class="scan-result">
+      <h2>Результаты поиска</h2>
+      <ul class="scan-list" id="scanList"></ul>
+    </div>
+
+    <script>
+      // Функция для получения данных и обновления карточек
+      function updateDeviceGrid() {
+        $.get("/devices", function (data) {
+          $("#deviceGrid").empty(); // Очистка текущих данных
+          if (data.length === 0) {
+            $("#deviceGrid").append("<p>Устройства не найдены.</p>");
+            return;
+          }
+
+          data.forEach(function (device) {
+            let mac = device.mac || "--";
+            let ip = device.ip || "--";
+            let battery = device.avg_battery || "--";
+            let temperature = device.avg_temperature || "--";
+            let humidity = device.avg_humidity || "--";
+            let isOnline = device.is_online ? "В сети" : "Не в сети";
+
+            $("#deviceGrid").append(`        
+              <div class="device-card">
+                <h3>Устройство</h3>
+                <p><strong>MAC:</strong> ${mac}</p>
+                <p><strong>IP:</strong> ${ip}</p>
+                <p><strong>Заряд батареи:</strong> ${battery}%</p>
+                <p><strong>Температура:</strong> ${temperature}°C</p>
+                <p><strong>Влажность:</strong> ${humidity}%</p>
+                <p><strong>Статус:</strong> ${isOnline}</p>
+              </div>
+            `);
+          });
+        }).fail(function () {
+          console.error("Ошибка при обновлении данных устройств.");
+        });
+      }
+
+      // Запуск обновления каждые 5 секунд (5000 миллисекунд)
+      setInterval(updateDeviceGrid, 10000);
+
+      // Начальная загрузка данных при открытии страницы
+      $(document).ready(function () {
+        updateDeviceGrid();
+
+        // Сканирование всех обнаруженных устройств
+        $("#scanButton").click(function () {
+          $.get("/scan", function (data) {
+            updateScanList(data); // Отображение результатов сканирования в отдельной секции
+          }).fail(function () {
+            $("#message").text("Ошибка при сканировании устройств.");
+          });
+        });
+
+        // Функция для обновления результатов сканирования
+        function updateScanList(scanResults) {
+          $("#scanList").empty();
+          if (scanResults.length === 0) {
+            $("#scanList").append(
+              "<li>Устройства не найдены во время сканирования.</li>"
+            );
+            return;
+          }
+          scanResults.forEach(function (device) {
+            $("#scanList").append(`
+              <li>
+                <strong>MAC:</strong> ${device.mac || "N/A"},
+                <strong>IP:</strong> ${device.ip || "N/A"},
+                <strong>RSSI:</strong> ${device.RSSI || "N/A"},
+                <strong>Тип:</strong> ${device.type || "N/A"}
+              </li>
+            `);
+          });
+        }
+      });
+    </script>
+  </body>
+</html>

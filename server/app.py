@@ -7,6 +7,7 @@ import logging
 import time
 import signal
 from server import DiscoveryServer
+from flask_cors import CORS
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -14,6 +15,7 @@ logger = logging.getLogger(__name__)
 class FlaskDiscoveryServer:
     def __init__(self, flask_port=5001, discovery_port=5000):
         self.app = Flask(__name__)
+        CORS(self.app)  # Включаем поддержку CORS
         self.devices = []
         self.discovery_server = DiscoveryServer(broadcast_port=discovery_port)
         self.flask_port = flask_port
@@ -36,18 +38,64 @@ class FlaskDiscoveryServer:
             for device in self.devices:
                 logger.debug(f"Requesting data from device: {device}")
                 try:
+                    # Отправка запроса к устройству
                     response = requests.get(f"http://{device['ip']}:5000/")
-                    print(response.json())
                     response.raise_for_status()
-                    all_devices_data.append(response.json())
+                    device_data_list = response.json()  # Ожидаем список
+                    
+                    # Логируем полученные данные
+                    logger.debug(f"Response from {device['ip']}: {device_data_list}")
+
+                    # Проверяем, есть ли данные в ответе
+                    if not device_data_list:  # Если список пуст
+                        logger.warning(f"No data received from {device['ip']}")
+                        all_devices_data.append({'ip': device['ip'], 'error': 'No data received'})
+                    else:
+                        for device_data in device_data_list:
+                            # Извлекаем MAC-адрес
+                            mac_address = device_data.get('mac')
+                            if mac_address:
+                                # Если mac - не список, делаем его списком
+                                if not isinstance(device['mac'], list):
+                                    device['mac'] = []
+                                # Добавляем MAC-адрес, если его ещё нет
+                                if mac_address not in device['mac']:
+                                    device['mac'].append(mac_address)
+
+                            # Добавляем IP-адрес устройства
+                            device_data['ip'] = device['ip']
+
+                            # Округляем значения
+                            if 'avg_battery' in device_data:
+                                device_data['avg_battery'] = round(device_data['avg_battery'], 2)
+                            if 'avg_temperature' in device_data:
+                                device_data['avg_temperature'] = round(device_data['avg_temperature'], 2)
+                            if 'avg_humidity' in device_data:
+                                device_data['avg_humidity'] = round(device_data['avg_humidity'], 2)
+
+                            all_devices_data.append(device_data)
                 except requests.exceptions.RequestException as e:
                     logger.error(f"Error requesting device data: {e}")
-                    return jsonify({"error": str(e)}), 500
+                    # Добавляем IP-адрес устройства в ответ с информацией об ошибке
+                    all_devices_data.append({
+                        'ip': device['ip'],
+                        'error': str(e)
+                    })
+                except AttributeError as e:
+                    logger.error(f"Invalid data format from {device['ip']}: {e}")
+                    # Добавляем IP-адрес устройства в ответ с информацией об ошибке
+                    all_devices_data.append({
+                        'ip': device['ip'],
+                        'error': "Invalid data format"
+                    })
+
             return jsonify(all_devices_data), 200
+
 
         @self.app.route('/devices/<mac>', methods=['GET'])
         def get_device(mac):
-            device = next((d for d in self.devices if d.get('mac') == mac), None)
+            # Находим устройство по MAC
+            device = next((d for d in self.devices if mac in d.get('mac', [])), None)
             if not device:
                 return jsonify({"error": "Device not found"}), 404
             try:
@@ -89,9 +137,9 @@ class FlaskDiscoveryServer:
 
         @self.app.route('/devices/<mac>/statistics', methods=['GET'])
         def get_device_statistics(mac):
-            print(  self.devices)
-            device = next((d for d in self.devices if d.get('mac') == mac), None)
-            print (device)
+            logger.debug(f"Devices: {self.devices}")
+            device = next((d for d in self.devices if mac in d.get('mac', [])), None)
+            logger.debug(f"Device found: {device}")
             if not device:
                 return jsonify({"error": "Device not found"}), 404
             try:
@@ -103,7 +151,6 @@ class FlaskDiscoveryServer:
             except requests.exceptions.RequestException as e:
                 return jsonify({"error": str(e)}), 500
 
-
     def update_devices(self):
         active_clients = self.discovery_server.get_active_clients()
         current_ips = {device['ip'] for device in self.devices}
@@ -113,7 +160,7 @@ class FlaskDiscoveryServer:
                 self.devices.append({
                     'ip': client_ip,
                     'port': 5000,
-                    'mac' : None
+                    'mac': []  # MAC-адреса будут добавлены позже
                 })
                 logger.info(f"New device discovered: {client_ip}")
 
@@ -138,7 +185,8 @@ class FlaskDiscoveryServer:
             update_thread.daemon = True
             update_thread.start()
 
-            self.app.run(host="127.0.0.1", port=self.flask_port)
+            self.app.run(host="127.0.0.1", port=5001, debug=False, use_reloader=False)
+
             return True
 
         except Exception as e:
