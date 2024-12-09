@@ -1,0 +1,132 @@
+/* DeviceDetail.css */
+.device-detail-container {
+  margin: 20px auto;
+  padding: 20px;
+  max-width: 800px;
+  background-color: #f9f9f9;
+  border-radius: 10px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.device-detail-title {
+  text-align: center;
+  color: #333;
+  font-size: 24px;
+  margin-bottom: 20px;
+}
+
+.loading-text {
+  text-align: center;
+  font-size: 18px;
+  color: #666;
+}
+
+.no-sensors-text {
+  text-align: center;
+  font-size: 18px;
+  color: #999;
+}
+
+.sensor-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  justify-content: center;
+}
+
+/* Стили для карточек датчиков */
+.sensor-card {
+  position: relative; /* Относительное позиционирование для размещения кнопки */
+  width: 250px;
+  padding: 15px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background-color: #fff;
+  text-align: center;
+  box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  display: flex;
+  flex-direction: column; /* Расположение элементов в колонку */
+  justify-content: space-between; /* Разделяем элементы равномерно */
+}
+
+.sensor-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* Стили для кнопки внутри карточки */
+.sensor-card button {
+  margin-top: 10px;
+  padding: 8px 16px;
+  font-size: 14px;
+  background-color: #28a745;
+  color: #fff;
+  border-radius: 5px;
+  cursor: pointer;
+  align-self: center; /* Центрируем кнопку горизонтально */
+}
+
+.sensor-card button:hover {
+  background-color: #218838;
+}
+
+.sensor-card.offline-sensor {
+  border-color: red;
+  background-color: #ffe6e6;
+}
+
+.sensor-details {
+  list-style: none;
+  padding: 0;
+}
+
+.sensor-details li {
+  margin-bottom: 8px;
+}
+
+.sensor-details .highlight {
+  font-size: 1.2em;
+  font-weight: bold;
+  color: #007bff;
+}
+
+.offline-warning {
+  color: red;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.scan-controls {
+  margin: 20px 0;
+  text-align: center;
+}
+
+button {
+  padding: 10px 20px;
+  font-size: 16px;
+  border: none;
+  border-radius: 5px;
+  background-color: #0066cc;
+  color: #fff;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+button:hover {
+  background-color: #004d99;
+}
+
+button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.scanned-devices {
+  margin-top: 30px;
+}
+
+.scanned-devices h3 {
+  text-align: center;
+  color: #333;
+}

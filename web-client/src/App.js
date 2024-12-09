@@ -2,7 +2,8 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import DeviceList from "./components/DeviceList";
 import DeviceDetail from "./components/DeviceDetail";
-import "./App.css";
+import DeviceGraph from "./components/DeviceGraph";
+import "./static/css/App.css";
 
 const App = () => {
   return (
@@ -15,6 +16,7 @@ const App = () => {
           <Routes>
             <Route path="/" element={<DeviceList />} />
             <Route path="/device/:ip" element={<DeviceDetail />} />
+            <Route path="/device/:ip/sensor/:mac" element={<DeviceGraph />} />
           </Routes>
         </main>
       </div>
@@ -23,21 +25,3 @@ const App = () => {
 };
 
 export default App;
-
-// import React from "react";
-// import DeviceList from "./components/DeviceList";
-// import ScanDevices from "./components/ScanDevices";
-// import "./App.css";
-
-// const App = () => {
-//   return (
-//     <div className="App">
-//       <main>
-//         <DeviceList />
-//         <ScanDevices />
-//       </main>
-//     </div>
-//   );
-// };
-
-// export default App;

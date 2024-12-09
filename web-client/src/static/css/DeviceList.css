@@ -1,0 +1,52 @@
+/* DeviceList.css */
+.device-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  justify-content: center;
+  margin: 20px 0;
+}
+
+.device-header {
+  padding: 16px;
+  background-color: #f0f0f0;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  border: 1px solid #ddd;
+  text-align: center; /* Центрируем текст */
+  max-width: 100%; /* Ограничиваем ширину заголовка */
+  box-sizing: border-box;
+}
+
+.device-container {
+  display: flex;
+  flex-direction: column; /* Располагаем заголовок и содержимое в колонку */
+  align-items: center; /* Центрируем содержимое */
+  padding: 16px;
+  margin: 16px;
+  border: 2px solid #ccc;
+  border-radius: 8px;
+  background-color: #fff;
+  max-width: 350px; /* Ограничиваем ширину карточки */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+button {
+  padding: 10px 20px;
+  font-size: 16px;
+  border: none;
+  border-radius: 5px;
+  background-color: #0066cc;
+  color: #fff;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+button:hover {
+  background-color: #004d99;
+}
+
+button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}

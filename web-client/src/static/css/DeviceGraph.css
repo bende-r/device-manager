@@ -1,0 +1,109 @@
+/* General container for the graph page */
+.graph-page-container {
+  /* max-width: 800px; */
+  margin: 0 auto;
+  padding: 20px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  font-family: Arial, sans-serif;
+}
+
+/* Page title */
+.graph-page-container h2 {
+  text-align: center;
+  font-size: 1.8rem;
+  color: #333;
+  margin-bottom: 20px;
+}
+
+/* Filters container */
+.date-filters {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+/* Label styling */
+.date-filters label {
+  font-size: 1rem;
+  color: #555;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+/* Input styling */
+.date-filters input {
+  margin-top: 5px;
+  padding: 5px 10px;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.date-filters input:focus {
+  border-color: #007bff;
+}
+
+/* Chart container */
+.chart-container {
+  background-color: #fff;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Loading text styling */
+.graph-page-container p {
+  text-align: center;
+  font-size: 1.2rem;
+  color: #777;
+  margin-top: 20px;
+}
+
+/* ChartJS customization */
+.chart-container canvas {
+  max-height: 400px;
+}
+
+/* Tooltip styling for the chart */
+.chartjs-tooltip {
+  background-color: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  font-size: 14px;
+  padding: 10px;
+  border-radius: 5px;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .graph-page-container {
+    padding: 15px;
+  }
+
+  .date-filters {
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .chart-container {
+    padding: 10px;
+  }
+
+  .graph-page-container h2 {
+    font-size: 1.5rem;
+  }
+
+  .date-filters label {
+    font-size: 0.9rem;
+  }
+
+  .date-filters input {
+    font-size: 0.9rem;
+  }
+}

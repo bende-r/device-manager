@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 
 class DiscoveryServer:
-    def __init__(self, broadcast_port=5000, tcp_port=5001):
+    def __init__(self, broadcast_port=5000, tcp_port=5002):
         self.broadcast_port = broadcast_port
         self.tcp_port = tcp_port
         self.clients = {}
@@ -44,8 +44,10 @@ class DiscoveryServer:
             while self.running:
                 try:
                     conn, addr = s.accept()
+                    #print(conn, addr)
                     with conn:
                         data = conn.recv(1024).decode()
+                        #print(f"Received from {addr[0]}: '{data}'")
                         if data == "register":
                             self.clients[addr[0]] = datetime.now()
                             print("Registered client: {}".format(addr[0]))

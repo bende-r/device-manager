@@ -35,7 +35,9 @@ class FlaskDiscoveryServer:
         @self.app.route('/devices', methods=['GET'])
         def get_devices():
             all_devices_data = []
+            logger.info(self.devices)
             for device in self.devices:
+                
                 logger.debug(f"Requesting data from device: {device}")
                 try:
                     # Отправка запроса к устройству
@@ -185,7 +187,7 @@ class FlaskDiscoveryServer:
             update_thread.daemon = True
             update_thread.start()
 
-            self.app.run(host="127.0.0.1", port=5001, debug=False, use_reloader=False)
+            self.app.run(host="0.0.0.0", port=5001, debug=False, use_reloader=False)
 
             return True
 
@@ -201,6 +203,20 @@ class FlaskDiscoveryServer:
         except Exception as e:
             logger.error(f"Error stopping discovery server: {e}")
 
+
+def broadcast_server_info(port=5001, broadcast_port=5000):
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        while True:
+            message = json.dumps({
+                "type": "server_info",
+                "ip": socket.gethostbyname(socket.gethostname()),  # IP-адрес сервера
+                "port": port
+            }).encode()
+            s.sendto(message, ('<broadcast>', broadcast_port))
+            print(f"Broadcasting server info: {message}")
+            threading.Event().wait(5)  # Интервал между сообщениями
+
 def main():
     server = FlaskDiscoveryServer(flask_port=5001, discovery_port=5000)
 
@@ -213,6 +229,8 @@ def main():
 
     try:
         server.start()
+        threading.Thread(target=broadcast_server_info, daemon=True).start()
+
     except KeyboardInterrupt:
         logger.info("Shutting down server due to keyboard interrupt...")
         server.stop()

@@ -1,27 +1,35 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import "../static/css/DeviceList.css";
 
 const DeviceList = () => {
   const [devices, setDevices] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [serverIp, setServerIp] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchDevices = async () => {
+    // Загружаем конфигурацию и получаем IP-адрес сервера
+    const fetchConfigAndDevices = async () => {
       setLoading(true);
       try {
-        const response = await axios.get("http://127.0.0.1:5001/devices");
+        const config = await import("../config.json");
+        console.log(config.serverIp);
+        setServerIp(config.serverIp);
+
+        // Выполняем запрос к серверу
+        const response = await axios.get(`http://${serverIp}/devices`);
         setDevices(response.data);
       } catch (error) {
-        console.error("Ошибка при загрузке устройств:", error);
+        console.error("Ошибка при загрузке устройств или конфигурации:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchDevices();
-    const intervalId = setInterval(fetchDevices, 20000); // Обновление каждые 20 секунд
+    fetchConfigAndDevices();
+    const intervalId = setInterval(fetchConfigAndDevices, 20000); // Обновление каждые 20 секунд
     return () => clearInterval(intervalId); // Очистка интервала
   }, []);
 
@@ -40,7 +48,6 @@ const DeviceList = () => {
 
   return (
     <div>
-      <h2>Список устройств</h2>
       {Object.keys(groupedDevices).length === 0 && !loading ? (
         <p>Нет доступных устройств.</p>
       ) : (
@@ -64,31 +71,29 @@ const DeviceList = () => {
                 </div>
                 <div className="sensors-grid">
                   {sensors.map((sensor, sensorIndex) => (
-                    <div
-                      key={sensorIndex}
-                      className={`sensor-card ${
-                        sensor.is_online ? "" : "offline-sensor"
-                      }`}
-                    >
+                    <div key={sensorIndex} className={`sensor-card`}>
                       <h4>Датчик</h4>
-                      <p>
-                        <strong>MAC:</strong> {sensor.mac || "--"}
-                      </p>
-                      <p>
-                        <strong>Температура:</strong>{" "}
-                        {sensor.avg_temperature || "--"}°C
-                      </p>
-                      <p>
-                        <strong>Влажность:</strong>{" "}
-                        {sensor.avg_humidity || "--"}%
-                      </p>
-                      <p>
-                        <strong>Батарея:</strong> {sensor.avg_battery || "--"}%
-                      </p>
-                      <p>
-                        <strong>Статус:</strong>{" "}
-                        {sensor.is_online ? "В сети" : "Не в сети"}
-                      </p>
+                      <ul className="sensor-details">
+                        <li>
+                          <strong>MAC:</strong> {sensor.mac || "--"}
+                        </li>
+                        <li className="highlight">
+                          <strong>Температура:</strong>{" "}
+                          {sensor.avg_temperature || "--"}°C
+                        </li>
+                        <li className="highlight">
+                          <strong>Влажность:</strong>{" "}
+                          {sensor.avg_humidity || "--"}%
+                        </li>
+                        <li>
+                          <strong>Батарея:</strong> {sensor.avg_battery || "--"}
+                          %
+                        </li>
+                        <li>
+                          <strong>Статус:</strong>{" "}
+                          {sensor.is_online ? "В сети" : "Не в сети"}
+                        </li>
+                      </ul>
                     </div>
                   ))}
                 </div>
@@ -97,7 +102,6 @@ const DeviceList = () => {
           })}
         </div>
       )}
-      {loading && <p>Обновление данных...</p>}
     </div>
   );
 };

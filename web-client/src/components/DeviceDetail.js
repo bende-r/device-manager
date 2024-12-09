@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
+import "../static/css/DeviceDetail.css";
 
 const DeviceDetail = () => {
   const { ip } = useParams(); // Получение IP устройства из маршрута
+  const navigate = useNavigate(); // Navigation hook for page redirection
   const [sensors, setSensors] = useState([]); // Датчики устройства
   const [scannedDevices, setScannedDevices] = useState([]); // Список отсканированных устройств
   const [loading, setLoading] = useState(true);
@@ -11,19 +13,20 @@ const DeviceDetail = () => {
 
   useEffect(() => {
     const fetchDeviceDetails = async () => {
-      setLoading(true);
       try {
-        // Запрос к устройству по его IP
         const response = await axios.get(`http://${ip}:5000/`);
-        setSensors(response.data); // Ожидаем список датчиков
+        setSensors(response.data); // Обновляем список датчиков
       } catch (error) {
         console.error("Ошибка при загрузке данных устройства:", error);
-      } finally {
-        setLoading(false);
       }
     };
 
     fetchDeviceDetails();
+    setLoading(false); // Сбрасываем начальную загрузку
+
+    // Устанавливаем интервал для периодического обновления
+    const intervalId = setInterval(fetchDeviceDetails, 20000); // Обновление каждые 20 секунд
+    return () => clearInterval(intervalId); // Очистка интервала при размонтировании компонента
   }, [ip]);
 
   const handleScan = async () => {
@@ -54,6 +57,10 @@ const DeviceDetail = () => {
     }
   };
 
+  const navigateToGraph = (mac) => {
+    navigate(`/device/${ip}/sensor/${mac}`);
+  };
+
   return (
     <div className="device-detail-container">
       <h2 className="device-detail-title">Детали устройства: {ip}</h2>
@@ -71,22 +78,36 @@ const DeviceDetail = () => {
               }`}
             >
               <h3>Датчик</h3>
-              <p>
-                <strong>MAC:</strong> {sensor.mac || "--"}
-              </p>
-              <p>
-                <strong>Температура:</strong> {sensor.avg_temperature || "--"}°C
-              </p>
-              <p>
-                <strong>Влажность:</strong> {sensor.avg_humidity || "--"}%
-              </p>
-              <p>
-                <strong>Батарея:</strong> {sensor.avg_battery || "--"}%
-              </p>
-              <p>
-                <strong>Статус:</strong>{" "}
-                {sensor.is_online ? "В сети" : "Не в сети"}
-              </p>
+              {!sensor.is_online && (
+                <p className="offline-warning">
+                  <strong>Последние показания</strong>
+                </p>
+              )}
+              <ul className="sensor-details">
+                <li>
+                  <strong>MAC:</strong> {sensor.mac || "--"}
+                </li>
+                <li className="highlight">
+                  <strong>Температура:</strong> {sensor.avg_temperature || "--"}
+                  °C
+                </li>
+                <li className="highlight">
+                  <strong>Влажность:</strong> {sensor.avg_humidity || "--"}%
+                </li>
+                <li>
+                  <strong>Батарея:</strong> {sensor.avg_battery || "--"}%
+                </li>
+                <li>
+                  <strong>Статус:</strong>{" "}
+                  {sensor.is_online ? "В сети" : "Не в сети"}
+                </li>
+              </ul>
+              <button
+                onClick={() => navigateToGraph(sensor.mac)}
+                className="fetch-stats-button"
+              >
+                Показать график
+              </button>
             </div>
           ))}
         </div>
