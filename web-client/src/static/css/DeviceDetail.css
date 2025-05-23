@@ -1,132 +1,177 @@
-/* DeviceDetail.css */
 .device-detail-container {
-  margin: 20px auto;
-  padding: 20px;
-  max-width: 800px;
-  background-color: #f9f9f9;
-  border-radius: 10px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  margin: 2rem auto;
+  padding: 2rem;
+  max-width: 1200px;
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
 
 .device-detail-title {
   text-align: center;
-  color: #333;
-  font-size: 24px;
-  margin-bottom: 20px;
+  color: #2c3e50;
+  font-size: 1.8rem;
+  margin-bottom: 1.5rem;
+  font-weight: 600;
 }
 
-.loading-text {
-  text-align: center;
-  font-size: 18px;
-  color: #666;
-}
-
+.loading-text,
 .no-sensors-text {
   text-align: center;
-  font-size: 18px;
-  color: #999;
+  font-size: 1.1rem;
+  color: #6c757d;
+  padding: 1rem;
 }
 
 .sensor-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 15px;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin: 2rem 0;
 }
 
-/* Стили для карточек датчиков */
 .sensor-card {
-  position: relative; /* Относительное позиционирование для размещения кнопки */
-  width: 250px;
-  padding: 15px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  background-color: #fff;
-  text-align: center;
-  box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  position: relative;
+  padding: 1.5rem;
+  border-radius: 10px;
+  background-color: #ffffff;
+  box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  border: 1px solid #e9ecef;
   display: flex;
-  flex-direction: column; /* Расположение элементов в колонку */
-  justify-content: space-between; /* Разделяем элементы равномерно */
+  flex-direction: column;
+  height: 100%;
 }
 
 .sensor-card:hover {
   transform: translateY(-5px);
-  box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.2);
-}
-
-/* Стили для кнопки внутри карточки */
-.sensor-card button {
-  margin-top: 10px;
-  padding: 8px 16px;
-  font-size: 14px;
-  background-color: #28a745;
-  color: #fff;
-  border-radius: 5px;
-  cursor: pointer;
-  align-self: center; /* Центрируем кнопку горизонтально */
-}
-
-.sensor-card button:hover {
-  background-color: #218838;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  border-color: #4361ee;
 }
 
 .sensor-card.offline-sensor {
-  border-color: red;
-  background-color: #ffe6e6;
+  border-color: #f72585;
+  background-color: #fff5f7;
+}
+
+.sensor-card h3 {
+  color: #2c3e50;
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+  border-bottom: 1px solid #f1f3f5;
+  padding-bottom: 0.5rem;
 }
 
 .sensor-details {
   list-style: none;
   padding: 0;
+  margin: 0 0 1rem 0;
+  flex-grow: 1;
 }
 
 .sensor-details li {
-  margin-bottom: 8px;
+  margin-bottom: 0.75rem;
+  display: flex;
+  justify-content: space-between;
+}
+
+.sensor-details strong {
+  color: #495057;
+  font-weight: 500;
 }
 
 .sensor-details .highlight {
-  font-size: 1.2em;
-  font-weight: bold;
-  color: #007bff;
+  color: #4361ee;
+  font-weight: 600;
 }
 
 .offline-warning {
-  color: red;
-  font-weight: bold;
-  margin-bottom: 8px;
+  color: #f72585;
+  font-weight: 500;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  background-color: #fff0f3;
+  padding: 0.5rem;
+  border-radius: 6px;
 }
 
 .scan-controls {
-  margin: 20px 0;
+  margin: 2rem 0;
   text-align: center;
 }
 
 button {
-  padding: 10px 20px;
-  font-size: 16px;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
   border: none;
-  border-radius: 5px;
-  background-color: #0066cc;
-  color: #fff;
+  border-radius: 8px;
+  background-color: #4361ee;
+  color: white;
   cursor: pointer;
-  transition: background-color 0.3s ease;
+  transition: all 0.3s ease;
+  font-weight: 500;
 }
 
 button:hover {
-  background-color: #004d99;
+  background-color: #3a56d4;
+  transform: translateY(-2px);
 }
 
 button:disabled {
-  background-color: #ccc;
+  background-color: #adb5bd;
+  transform: none;
   cursor: not-allowed;
 }
 
+.fetch-stats-button {
+  margin-top: auto;
+  align-self: center;
+  width: 100%;
+}
+
+.add-device-button {
+  background-color: #4cc9f0;
+}
+
+.add-device-button:hover {
+  background-color: #3ab7dd;
+}
+
 .scanned-devices {
-  margin-top: 30px;
+  margin-top: 3rem;
+  animation: fadeIn 0.5s ease;
 }
 
 .scanned-devices h3 {
   text-align: center;
-  color: #333;
+  color: #2c3e50;
+  margin-bottom: 1.5rem;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .device-detail-container {
+    padding: 1.5rem;
+    margin: 1rem;
+  }
+
+  .sensor-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .device-detail-title {
+    font-size: 1.5rem;
+  }
 }

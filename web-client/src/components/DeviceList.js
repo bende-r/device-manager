@@ -1,106 +1,168 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import "../static/css/DeviceList.css";
+import GreenhouseMapper from "./GreenhouseMapper";
 
 const DeviceList = () => {
   const [devices, setDevices] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [serverIp, setServerIp] = useState("");
+  const [activeTab, setActiveTab] = useState("devices");
   const navigate = useNavigate();
 
-  useEffect(() => {
-    // Загружаем конфигурацию и получаем IP-адрес сервера
-    const fetchConfigAndDevices = async () => {
+  const fetchDevices = useCallback(async () => {
+    try {
       setLoading(true);
-      try {
-        const config = await import("../config.json");
-        console.log(config.serverIp);
-        setServerIp(config.serverIp);
+      const serverIp = process.env.REACT_APP_SERVER_IP;
+      setServerIp(serverIp);
 
-        // Выполняем запрос к серверу
-        const response = await axios.get(`http://${serverIp}/devices`);
-        setDevices(response.data);
-      } catch (error) {
-        console.error("Ошибка при загрузке устройств или конфигурации:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchConfigAndDevices();
-    const intervalId = setInterval(fetchConfigAndDevices, 20000); // Обновление каждые 20 секунд
-    return () => clearInterval(intervalId); // Очистка интервала
+      const response = await axios.get(`http://${serverIp}/devices`);
+      setDevices(response.data);
+      setError(null);
+    } catch (err) {
+      console.error("Ошибка при загрузке устройств:", err);
+      setError("Не удалось загрузить список устройств");
+      setDevices([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    if (activeTab === "devices") {
+      fetchDevices();
+      const intervalId = setInterval(fetchDevices, 20000);
+      return () => clearInterval(intervalId);
+    }
+  }, [fetchDevices, activeTab]);
 
   const handleCardClick = (ip) => {
     navigate(`/device/${ip}`);
   };
 
-  // Группировка устройств по IP
-  const groupedDevices = devices.reduce((acc, device) => {
-    if (!acc[device.ip]) {
-      acc[device.ip] = [];
-    }
-    acc[device.ip].push(device);
-    return acc;
-  }, {});
+  const groupDevicesByIp = (devices) => {
+    return devices.reduce((acc, device) => {
+      if (!acc[device.ip]) acc[device.ip] = [];
+      acc[device.ip].push(device);
+      return acc;
+    }, {});
+  };
+
+  const renderSensorCard = (sensor) => (
+    <div key={sensor.mac} className="sensor-card">
+      <h4>Датчик {sensor.mac?.slice(-5) || "N/A"}</h4>
+      <ul className="sensor-details">
+        <li>
+          <strong>MAC:</strong> <span>{sensor.mac || "--"}</span>
+        </li>
+        <li className="highlight">
+          <strong>Температура:</strong>
+          <span>
+            {sensor.avg_temperature != null
+              ? `${sensor.avg_temperature}°C`
+              : "--"}
+          </span>
+        </li>
+        <li className="highlight">
+          <strong>Влажность:</strong>
+          <span>
+            {sensor.avg_humidity != null ? `${sensor.avg_humidity}%` : "--"}
+          </span>
+        </li>
+        <li>
+          <strong>Батарея:</strong>
+          <span>
+            {sensor.avg_battery != null ? `${sensor.avg_battery}%` : "--"}
+          </span>
+        </li>
+        <li>
+          <strong>Статус:</strong>
+          <span
+            className={sensor.is_online ? "status-online" : "status-offline"}
+          >
+            {sensor.is_online ? "В сети" : "Не в сети"}
+          </span>
+        </li>
+      </ul>
+    </div>
+  );
+
+  const groupedDevices = groupDevicesByIp(devices);
+  const hasValidDevices = Object.keys(groupedDevices).length > 0;
 
   return (
-    <div>
-      {Object.keys(groupedDevices).length === 0 && !loading ? (
-        <p>Нет доступных устройств.</p>
-      ) : (
-        <div className="device-grid">
-          {Object.keys(groupedDevices).map((ip, index) => {
-            const sensors = groupedDevices[ip].filter(
-              (sensor) => sensor.mac && sensor.avg_temperature != null
-            ); // Учитываем только устройства с валидными датчиками
+    <div className="device-list-container">
+      {activeTab === "devices" ? (
+        <>
+          <h2>Список устройств</h2>
+          {serverIp && (
+            <p className="server-info">Подключено к серверу: {serverIp}</p>
+          )}
 
-            return (
-              <div key={index} className="device-container">
-                <div
-                  className="device-header"
-                  onClick={() => handleCardClick(ip)}
-                  style={{ cursor: "pointer" }}
-                >
-                  <h3>IP Устройства: {ip}</h3>
-                  <p>
-                    <strong>Количество датчиков:</strong> {sensors.length}
-                  </p>
-                </div>
-                <div className="sensors-grid">
-                  {sensors.map((sensor, sensorIndex) => (
-                    <div key={sensorIndex} className={`sensor-card`}>
-                      <h4>Датчик</h4>
-                      <ul className="sensor-details">
-                        <li>
-                          <strong>MAC:</strong> {sensor.mac || "--"}
-                        </li>
-                        <li className="highlight">
-                          <strong>Температура:</strong>{" "}
-                          {sensor.avg_temperature || "--"}°C
-                        </li>
-                        <li className="highlight">
-                          <strong>Влажность:</strong>{" "}
-                          {sensor.avg_humidity || "--"}%
-                        </li>
-                        <li>
-                          <strong>Батарея:</strong> {sensor.avg_battery || "--"}
-                          %
-                        </li>
-                        <li>
-                          <strong>Статус:</strong>{" "}
-                          {sensor.is_online ? "В сети" : "Не в сети"}
-                        </li>
-                      </ul>
+          {loading ? (
+            <p className="loading-message">Загрузка устройств...</p>
+          ) : error ? (
+            <div className="empty-message">
+              <p>{error}</p>
+              <button onClick={fetchDevices} className="refresh-button">
+                Повторить попытку
+              </button>
+            </div>
+          ) : !hasValidDevices ? (
+            <p className="empty-message">Нет доступных устройств с датчиками</p>
+          ) : (
+            <div className="device-grid">
+              {Object.entries(groupedDevices).map(([ip, deviceGroup]) => {
+                const sensors = deviceGroup.filter(
+                  (device) => device.mac && device.avg_temperature != null,
+                );
+
+                if (sensors.length === 0) return null;
+
+                return (
+                  <div key={ip} className="device-card">
+                    <div
+                      className="device-header"
+                      onClick={() => handleCardClick(ip)}
+                    >
+                      <h3>Шлюз: {ip}</h3>
+                      <div className="device-meta">
+                        <span>Датчиков: {sensors.length}</span>
+                        <span>
+                          Последнее обновление:{" "}
+                          {new Date().toLocaleTimeString()}
+                        </span>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+                    <div className="sensors-grid">
+                      {sensors.map(renderSensorCard)}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {!loading && hasValidDevices && (
+            <button
+              onClick={fetchDevices}
+              className="refresh-button"
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <span className="loading-spinner"></span> Обновление...
+                </>
+              ) : (
+                "Обновить данные"
+              )}
+            </button>
+          )}
+        </>
+      ) : (
+        <GreenhouseMapper devices={devices} />
       )}
     </div>
   );

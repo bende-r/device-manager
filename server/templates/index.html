@@ -111,10 +111,9 @@
     </div>
 
     <script>
-      // Функция для получения данных и обновления карточек
       function updateDeviceGrid() {
         $.get("/devices", function (data) {
-          $("#deviceGrid").empty(); // Очистка текущих данных
+          $("#deviceGrid").empty();
           if (data.length === 0) {
             $("#deviceGrid").append("<p>Устройства не найдены.</p>");
             return;
@@ -145,23 +144,19 @@
         });
       }
 
-      // Запуск обновления каждые 5 секунд (5000 миллисекунд)
       setInterval(updateDeviceGrid, 10000);
 
-      // Начальная загрузка данных при открытии страницы
       $(document).ready(function () {
         updateDeviceGrid();
 
-        // Сканирование всех обнаруженных устройств
         $("#scanButton").click(function () {
           $.get("/scan", function (data) {
-            updateScanList(data); // Отображение результатов сканирования в отдельной секции
+            updateScanList(data);
           }).fail(function () {
             $("#message").text("Ошибка при сканировании устройств.");
           });
         });
 
-        // Функция для обновления результатов сканирования
         function updateScanList(scanResults) {
           $("#scanList").empty();
           if (scanResults.length === 0) {

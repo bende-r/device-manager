@@ -41,7 +41,7 @@ class FlaskDiscoveryServer:
                 logger.debug(f"Requesting data from device: {device}")
                 try:
                     # Отправка запроса к устройству
-                    response = requests.get(f"http://{device['ip']}:5000/")
+                    response = requests.get(f"http:
                     response.raise_for_status()
                     device_data_list = response.json()  # Ожидаем список
                     
@@ -101,7 +101,7 @@ class FlaskDiscoveryServer:
             if not device:
                 return jsonify({"error": "Device not found"}), 404
             try:
-                response = requests.get(f"http://{device['ip']}:5000/devices/{mac}")
+                response = requests.get(f"http:
                 response.raise_for_status()
                 return jsonify(response.json()), 200
             except requests.exceptions.RequestException as e:
@@ -112,7 +112,7 @@ class FlaskDiscoveryServer:
             scanned_devices = []
             for device in self.devices:
                 try:
-                    response = requests.get(f"http://{device['ip']}:5000/scan")
+                    response = requests.get(f"http:
                     response.raise_for_status()
                     scanned_devices.extend(response.json())
                 except requests.exceptions.RequestException as e:
@@ -128,7 +128,7 @@ class FlaskDiscoveryServer:
             for device in self.devices:
                 try:
                     response = requests.post(
-                        f"http://{device['ip']}:5000/devices",
+                        f"http:
                         params={"mac": mac}
                     )
                     response.raise_for_status()
@@ -146,7 +146,7 @@ class FlaskDiscoveryServer:
                 return jsonify({"error": "Device not found"}), 404
             try:
                 response = requests.get(
-                    f"http://{device['ip']}:5000/devices/{mac}/statistics"
+                    f"http:
                 )
                 response.raise_for_status()
                 return jsonify(response.json()), 200

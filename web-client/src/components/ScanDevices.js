@@ -1,25 +1,23 @@
 import React, { useState } from "react";
 import axios from "axios";
-import { discoverServer } from "./serverDiscovery"; // Импорт функции обнаружения сервера
+import { discoverServer } from "./serverDiscovery";
 
 const ScanDevices = () => {
   const [scanResults, setScanResults] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [serverInfo, setServerInfo] = useState(null); // Состояние для хранения информации о сервере
-  const [error, setError] = useState(null); // Состояние для обработки ошибок
+  const [serverInfo, setServerInfo] = useState(null);
+  const [error, setError] = useState(null);
 
   const handleScan = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      // Автоматическое определение сервера
       const server = await discoverServer();
       setServerInfo(server);
 
-      // Выполнение сканирования с использованием найденного сервера
       const response = await axios.get(
-        `http://${server.ip}:${server.port}/scan`
+        `http://${server.ip}:${server.port}/scan`,
       );
       setScanResults(response.data);
     } catch (err) {

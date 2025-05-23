@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
 import { Line } from "react-chartjs-2";
@@ -13,10 +13,9 @@ import {
   Legend,
 } from "chart.js";
 import zoomPlugin from "chartjs-plugin-zoom";
-import { format } from "date-fns";
+import { format, subDays } from "date-fns";
 import "../static/css/DeviceGraph.css";
 
-// Register Chart.js components and plugins
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -25,210 +24,315 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  zoomPlugin
+  zoomPlugin,
 );
 
 const DeviceGraph = () => {
-  const { ip, mac } = useParams(); // Retrieve IP and MAC from route parameters
-  const [chartData, setChartData] = useState(null); // Chart data
-  const [startDate, setStartDate] = useState(""); // Start date filter
-  const [endDate, setEndDate] = useState(""); // End date filter
+  const { ip, mac } = useParams();
+  const [chartData, setChartData] = useState(null);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchStatistics = async () => {
-      try {
-        const params = {};
-        if (startDate) params.start_date = startDate;
-        if (endDate) params.end_date = endDate;
+    const defaultEndDate = new Date();
+    const defaultStartDate = subDays(defaultEndDate, 7);
+    setStartDate(format(defaultStartDate, "yyyy-MM-dd"));
+    setEndDate(format(defaultEndDate, "yyyy-MM-dd"));
+  }, []);
 
-        const response = await axios.get(
-          `http://${ip}:5000/devices/${mac}/statistics`,
-          { params }
-        );
+  const fetchStatistics = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-        const stats = response.data;
+      const params = {};
+      if (startDate) params.start_date = startDate;
+      if (endDate) params.end_date = endDate;
 
-        const formattedStats = [];
-        for (let i = 0; i < stats.length; i++) {
-          const currentEntry = stats[i];
-          const nextEntry = stats[i + 1];
+      const response = await axios.get(
+        `http://${ip}:5000/devices/${mac}/statistics`,
+        { params },
+      );
 
-          formattedStats.push(currentEntry);
+      const statsData = response.data;
+      setStats(calculateStatistics(statsData));
 
-          if (nextEntry) {
-            const currentTime = new Date(currentEntry.timestamp);
-            const nextTime = new Date(nextEntry.timestamp);
+      const formattedStats = formatChartData(statsData);
+      const labels = formattedStats.map((entry) =>
+        format(new Date(entry.timestamp), "dd.MM.yyyy HH:mm"),
+      );
 
-            // Check if the time difference exceeds 1 hour
-            if ((nextTime - currentTime) / (1000 * 60 * 60) > 1) {
-              formattedStats.push({
-                timestamp: nextTime.toISOString(),
-                temperature: null,
-                humidity: null,
-              });
-            }
-          }
-        }
-
-        const labels = formattedStats.map((entry) =>
-          format(new Date(entry.timestamp), "dd-MM-yyyy HH:mm")
-        );
-        const temperatures = formattedStats.map((entry) => entry.temperature);
-        const humidity = formattedStats.map((entry) => entry.humidity);
-
-        setChartData({
-          labels,
-          datasets: [
-            {
-              label: "Температура (°C)",
-              data: temperatures,
-              fill: false,
-              borderColor: "rgba(75,192,192,1)",
-              tension: 0.4,
-            },
-            {
-              label: "Влажность (%)",
-              data: humidity,
-              fill: false,
-              borderColor: "rgba(255,99,132,1)",
-              tension: 0.4,
-            },
-          ],
-        });
-      } catch (error) {
-        console.error("Error fetching statistics:", error);
-      }
-    };
-
-    fetchStatistics();
+      setChartData({
+        labels,
+        datasets: [
+          {
+            label: "Температура (°C)",
+            data: formattedStats.map((entry) => entry.temperature),
+            borderColor: "#3a86ff",
+            backgroundColor: "rgba(58, 134, 255, 0.1)",
+            tension: 0.3,
+            borderWidth: 2,
+            pointRadius: 3,
+          },
+          {
+            label: "Влажность (%)",
+            data: formattedStats.map((entry) => entry.humidity),
+            borderColor: "#ff006e",
+            backgroundColor: "rgba(255, 0, 110, 0.1)",
+            tension: 0.3,
+            borderWidth: 2,
+            pointRadius: 3,
+          },
+        ],
+      });
+    } catch (err) {
+      console.error("Error fetching statistics:", err);
+      setError("Не удалось загрузить данные. Проверьте подключение.");
+    } finally {
+      setLoading(false);
+    }
   }, [ip, mac, startDate, endDate]);
+
+  useEffect(() => {
+    if (startDate && endDate) {
+      fetchStatistics();
+    }
+  }, [fetchStatistics, startDate, endDate]);
+
+  const formatChartData = (data) => {
+    const formatted = [];
+    for (let i = 0; i < data.length; i++) {
+      const current = data[i];
+      const next = data[i + 1];
+      formatted.push(current);
+
+      if (next) {
+        const currentTime = new Date(current.timestamp);
+        const nextTime = new Date(next.timestamp);
+        if ((nextTime - currentTime) / (1000 * 60 * 60) > 1) {
+          formatted.push({
+            timestamp: nextTime.toISOString(),
+            temperature: null,
+            humidity: null,
+          });
+        }
+      }
+    }
+    return formatted;
+  };
+
+  const calculateStatistics = (data) => {
+    if (!data || data.length === 0) return null;
+
+    const tempValues = data.map((d) => d.temperature).filter((v) => v !== null);
+    const humValues = data.map((d) => d.humidity).filter((v) => v !== null);
+
+    if (tempValues.length === 0 || humValues.length === 0) return null;
+
+    return {
+      temperature: {
+        avg: tempValues.reduce((a, b) => a + b, 0) / tempValues.length,
+        min: Math.min(...tempValues),
+        max: Math.max(...tempValues),
+      },
+      humidity: {
+        avg: humValues.reduce((a, b) => a + b, 0) / humValues.length,
+        min: Math.min(...humValues),
+        max: Math.max(...humValues),
+      },
+      period: {
+        start: format(new Date(data[0].timestamp), "dd.MM.yyyy HH:mm"),
+        end: format(
+          new Date(data[data.length - 1].timestamp),
+          "dd.MM.yyyy HH:mm",
+        ),
+      },
+    };
+  };
+
+  const resetZoom = () => {
+    if (chartRef.current) {
+      chartRef.current.resetZoom();
+    }
+  };
+
+  const chartRef = React.useRef();
 
   return (
     <div className="graph-page-container">
-      <h2>График температуры и влажности для датчика {mac}</h2>
-      <div className="date-filters">
-        <label>
-          Начальная дата:
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-          />
-        </label>
-        <label>
-          Конечная дата:
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-          />
-        </label>
+      <div className="graph-header">
+        <h2>График датчика {mac}</h2>
+        <div className="device-info">
+          <span>Шлюз: {ip}</span>
+        </div>
       </div>
-      {chartData ? (
-        <div className="chart-container">
-          <Line
-            data={chartData}
-            options={{
-              responsive: true,
-              plugins: {
-                legend: {
-                  labels: {
-                    font: {
-                      size: 16,
-                      weight: "bold",
-                    },
-                    color: "#333",
-                  },
-                },
-                tooltip: {
-                  callbacks: {
-                    label: function (context) {
-                      return `${context.dataset.label}: ${context.raw.toFixed(
-                        2
-                      )}`;
-                    },
-                  },
-                  titleFont: {
-                    size: 14,
-                    weight: "bold",
-                  },
-                  bodyFont: {
-                    size: 14,
-                  },
-                  backgroundColor: "rgba(0,0,0,0.8)",
-                },
-                zoom: {
-                  pan: {
-                    enabled: true,
-                    mode: "x", // Allow horizontal panning
-                  },
-                  zoom: {
-                    wheel: {
-                      enabled: true,
-                    },
-                    pinch: {
-                      enabled: true,
-                    },
-                    mode: "x", // Zoom only on the x-axis
-                  },
-                },
-              },
-              scales: {
-                x: {
-                  ticks: {
-                    callback: function (value, index, ticks) {
-                      // Show every 5th tick for better readability
-                      return index % 5 === 0
-                        ? this.getLabelForValue(value)
-                        : "";
-                    },
-                    font: {
-                      size: 12,
-                    },
-                    color: "#666",
-                  },
-                  title: {
-                    display: true,
-                    text: "Дата и время",
-                    font: {
-                      size: 14,
-                      weight: "bold",
-                    },
-                    color: "#333",
-                  },
-                },
-                y: {
-                  ticks: {
-                    font: {
-                      size: 14,
-                    },
-                    color: "#666",
-                  },
-                  title: {
-                    display: true,
-                    text: "Значения",
-                    font: {
-                      size: 16,
-                      weight: "bold",
-                    },
-                    color: "#333",
-                  },
-                },
-              },
-              elements: {
-                line: {
-                  tension: 0.4,
-                },
-                point: {
-                  radius: 3,
-                  borderWidth: 1,
-                },
-              },
-            }}
-          />
+
+      <div className="controls-section">
+        <div className="date-filters">
+          <div className="filter-group">
+            <label htmlFor="start-date">Начальная дата:</label>
+            <input
+              id="start-date"
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              max={endDate}
+            />
+          </div>
+          <div className="filter-group">
+            <label htmlFor="end-date">Конечная дата:</label>
+            <input
+              id="end-date"
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              min={startDate}
+              max={format(new Date(), "yyyy-MM-dd")}
+            />
+          </div>
+          <button
+            onClick={resetZoom}
+            className="reset-zoom-btn"
+            disabled={!chartData}
+          >
+            Сбросить масштаб
+          </button>
+        </div>
+      </div>
+
+      {error && (
+        <div className="error-message">
+          {error}
+          <button onClick={fetchStatistics}>Повторить попытку</button>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="loading-indicator">
+          <div className="spinner"></div>
+          <p>Загрузка данных...</p>
         </div>
       ) : (
-        <p>Загрузка данных...</p>
+        <>
+          {stats && (
+            <div className="stats-section">
+              <h3>Статистика за период</h3>
+              <div className="stats-grid">
+                <div className="stat-card">
+                  <h4>Температура (°C)</h4>
+                  <div className="stat-row">
+                    <span>Средняя:</span>
+                    <span>{stats.temperature.avg.toFixed(1)}</span>
+                  </div>
+                  <div className="stat-row">
+                    <span>Минимальная:</span>
+                    <span>{stats.temperature.min.toFixed(1)}</span>
+                  </div>
+                  <div className="stat-row">
+                    <span>Максимальная:</span>
+                    <span>{stats.temperature.max.toFixed(1)}</span>
+                  </div>
+                </div>
+                <div className="stat-card">
+                  <h4>Влажность (%)</h4>
+                  <div className="stat-row">
+                    <span>Средняя:</span>
+                    <span>{stats.humidity.avg.toFixed(1)}</span>
+                  </div>
+                  <div className="stat-row">
+                    <span>Минимальная:</span>
+                    <span>{stats.humidity.min.toFixed(1)}</span>
+                  </div>
+                  <div className="stat-row">
+                    <span>Максимальная:</span>
+                    <span>{stats.humidity.max.toFixed(1)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="chart-section">
+            {chartData ? (
+              <Line
+                ref={chartRef}
+                data={chartData}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: {
+                      position: "top",
+                      labels: {
+                        font: {
+                          size: 14,
+                          weight: "bold",
+                        },
+                        padding: 20,
+                        usePointStyle: true,
+                      },
+                    },
+                    tooltip: {
+                      mode: "index",
+                      intersect: false,
+                      callbacks: {
+                        label: (context) => {
+                          let label = context.dataset.label || "";
+                          if (label) label += ": ";
+                          if (context.raw !== null) {
+                            label += Number(context.raw).toFixed(1);
+                          } else {
+                            label += "нет данных";
+                          }
+                          return label;
+                        },
+                      },
+                    },
+                    zoom: {
+                      zoom: {
+                        wheel: { enabled: true },
+                        pinch: { enabled: true },
+                        mode: "x",
+                      },
+                      pan: {
+                        enabled: true,
+                        mode: "x",
+                      },
+                      limits: {
+                        x: { min: "original", max: "original" },
+                      },
+                    },
+                  },
+                  scales: {
+                    x: {
+                      grid: { display: false },
+                      ticks: {
+                        maxRotation: 45,
+                        minRotation: 45,
+                        autoSkip: true,
+                        maxTicksLimit: 10,
+                      },
+                    },
+                    y: {
+                      grid: { color: "#f0f0f0" },
+                      ticks: { precision: 1 },
+                    },
+                  },
+                  interaction: {
+                    mode: "nearest",
+                    axis: "x",
+                    intersect: false,
+                  },
+                }}
+              />
+            ) : (
+              <p className="no-data-message">Нет данных для отображения</p>
+            )}
+          </div>
+        </>
       )}
     </div>
   );

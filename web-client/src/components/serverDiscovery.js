@@ -8,7 +8,6 @@ export const discoverServer = (broadcastPort = 5000) => {
       try {
         const serverInfo = JSON.parse(msg.toString());
         if (serverInfo.type === "server_info") {
-          console.log("Discovered server:", serverInfo);
           client.close();
           resolve(serverInfo);
         }
@@ -25,8 +24,6 @@ export const discoverServer = (broadcastPort = 5000) => {
       reject(err);
     });
 
-    client.bind(broadcastPort, () => {
-      console.log(`Listening for server broadcasts on port ${broadcastPort}`);
-    });
+    client.bind(broadcastPort, () => {});
   });
 };

@@ -1,52 +1,165 @@
-/* DeviceList.css */
+.device-list-container {
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
 .device-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 15px;
-  justify-content: center;
-  margin: 20px 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.device-card {
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  transition: all 0.3s ease;
+  border: 1px solid #e9ecef;
+}
+
+.device-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+  border-color: #4361ee;
 }
 
 .device-header {
-  padding: 16px;
-  background-color: #f0f0f0;
-  border-radius: 8px;
-  margin-bottom: 16px;
-  border: 1px solid #ddd;
-  text-align: center; /* Центрируем текст */
-  max-width: 100%; /* Ограничиваем ширину заголовка */
-  box-sizing: border-box;
-}
-
-.device-container {
-  display: flex;
-  flex-direction: column; /* Располагаем заголовок и содержимое в колонку */
-  align-items: center; /* Центрируем содержимое */
-  padding: 16px;
-  margin: 16px;
-  border: 2px solid #ccc;
-  border-radius: 8px;
-  background-color: #fff;
-  max-width: 350px; /* Ограничиваем ширину карточки */
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-button {
-  padding: 10px 20px;
-  font-size: 16px;
-  border: none;
-  border-radius: 5px;
-  background-color: #0066cc;
-  color: #fff;
+  padding: 1.25rem;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
   cursor: pointer;
   transition: background-color 0.3s ease;
 }
 
-button:hover {
-  background-color: #004d99;
+.device-header:hover {
+  background-color: #f1f3f5;
 }
 
-button:disabled {
-  background-color: #ccc;
+.device-header h3 {
+  color: #2c3e50;
+  margin: 0 0 0.5rem 0;
+  font-size: 1.25rem;
+}
+
+.device-meta {
+  display: flex;
+  justify-content: space-between;
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+.sensors-grid {
+  padding: 1rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.sensor-card {
+  padding: 1rem;
+  border-radius: 8px;
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+}
+
+.sensor-card h4 {
+  margin: 0 0 0.75rem 0;
+  color: #495057;
+  font-size: 1rem;
+}
+
+.sensor-details {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.sensor-details li {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.sensor-details strong {
+  color: #495057;
+  font-weight: 500;
+}
+
+.highlight {
+  color: #4361ee;
+  font-weight: 600;
+}
+
+.status-online {
+  color: #4cc9f0;
+  font-weight: 600;
+}
+
+.status-offline {
+  color: #f72585;
+  font-weight: 600;
+}
+
+.loading-message,
+.empty-message {
+  text-align: center;
+  padding: 2rem;
+  color: #6c757d;
+  font-size: 1.1rem;
+}
+
+.refresh-button {
+  display: block;
+  margin: 1.5rem auto;
+  padding: 0.75rem 1.5rem;
+  background-color: #4361ee;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.refresh-button:hover {
+  background-color: #3a56d4;
+  transform: translateY(-2px);
+}
+
+.refresh-button:disabled {
+  background-color: #adb5bd;
+  transform: none;
   cursor: not-allowed;
+}
+
+/* Анимация загрузки */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-spinner {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 1s ease-in-out infinite;
+  margin-right: 0.5rem;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .device-list-container {
+    padding: 1rem;
+  }
+
+  .device-grid {
+    grid-template-columns: 1fr;
+  }
 }
